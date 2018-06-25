@@ -1,4 +1,4 @@
-
+import { Resolvers } from './data/resolvers';
 import express from 'express';
 import { graphqlExpress, graphiqlExpress } from 'apollo-server-express';
 import { makeExecutableSchema, addMockFunctionsToSchema } from 'graphql-tools';
@@ -11,12 +11,13 @@ const PORT = 8080;
 const app = express()
 const executableSchema = makeExecutableSchema({
   typeDefs: Schema,
+  resolvers: Resolvers,
 });
-addMockFunctionsToSchema({
-  schema: executableSchema,
-  mocks: Mocks,
-  preserveResolvers: true,
-});
+//addMockFunctionsToSchema({
+  //schema: executableSchema,
+  //mocks: Mocks,
+  //preserveResolvers: true,
+//});
 // `context` must be an object and can't be undefined when using connectors
 app.use('/graphql', bodyParser.json(), graphqlExpress({
   schema: executableSchema,
