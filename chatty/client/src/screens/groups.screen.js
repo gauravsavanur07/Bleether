@@ -3,16 +3,25 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import {
   FlatList,
-  StyleSheet,
+  ActivityIndicator,
+ StyleSheet,
   Text,
   TouchableHighlight,
   View,
 } from 'react-native';
+import {graphql } from 'react-apollo';
+import {USER_QUERY} from '../graphql/user.query';
+
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'white',
     flex: 1,
   },
+loading: {
+    justifyContent: 'center',
+    flex: 1,
+  },
+
   groupContainer: {
     flex: 1,
     flexDirection: 'row',
@@ -43,6 +52,16 @@ constructor(props) {
 
 
  render() {
+    const { loading, user } = this.props;
+    // render loading placeholder while we fetch messages
+    if (loading) {
+      return (
+        <View style={[styles.loading, styles.container]}>
+          <ActivityIndicator />
+        </View>
+      );
+    }
+
     const { id, name } = this.props.group;
     return (
       <TouchableHighlight
@@ -84,7 +103,7 @@ class Groups extends Component {
     return (
       <View style={styles.container}>
         <FlatList
-          data={fakeData()}
+          data={user.groups}
           keyExtractor={this.keyExtractor}
           renderItem={this.renderItem}
         />
@@ -96,6 +115,31 @@ Groups.propTypes = {
   navigation: PropTypes.shape({
     navigate: PropTypes.func,
   }),
+  loading: PropTypes.bool,
+  user: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    email: PropTypes.string.isRequired,
+    groups: PropTypes.arrayOf(
+      PropTypes.shape({
+        id: PropTypes.number.isRequired,
+        name: PropTypes.string.isRequired,
+      }),
+    ),
+  }),
+};
+const userQuery = graphql(USER_QUERY, {
+  options: () => ({ variables: { id: 1 } }), // fake the user for now
+  props: ({ data: { loading, user } }) => ({
+    loading, user,
+  }),
+});
+export default userQuery(Groups);
+
+
+
+
+
+
 };
 
 export default Groups;
