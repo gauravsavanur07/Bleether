@@ -4,11 +4,14 @@ import {
   ActivityIndicator,
   FlatList,
   StyleSheet,
+  KeyboardAvoidingView,
   View,
 } from 'react-native';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import MessageInput from '../components/message-input.component';
 import {graphql, compose } from 'react-apollo';
+import CREATE_MESSAGE_MUTATION from '../graphql/create-message.mutation';
 import randomColor from 'randomcolor';
 import Message from '../components/message.component';
 import {graphql,compose } from 'react-apollo'
@@ -58,7 +61,9 @@ constructor(props) {
       usernameColors,
     };
     this.renderItem = this.renderItem.bind(this);
-  }
+    this.send=this.send.bind(this);
+ }
+
   componentWillReceiveProps(nextProps) {
     const usernameColors = {};
     // check for new messages
@@ -74,6 +79,18 @@ constructor(props) {
       });
     }
   }
+send(text) {
+this.props.createMessage({
+      groupId: this.props.navigation.state.params.groupId,
+      userId: 1, // faking the user for now
+      text,
+
+}).then(() => {
+this.flatList.scrollEnd({animated : true });
+});
+}
+
+
   keyExtractor = item => item.id.toString();
   renderItem = ({ item: message }) => (
     <Message
@@ -81,7 +98,9 @@ constructor(props) {
       isCurrentUser={message.from.id === 1} // for now until we implement auth
       message={message}
     />
-  )
+<MessageInput send {this.send} />
+ 
+ )
 
   keyExtractor = item => item.message.id.toString();
   renderItem = ({ item: { isCurrentUser, message, color } }) => (
@@ -103,24 +122,84 @@ constructor(props) {
     } 
  // render list of messages for group
     return (
+ <KeyboardAvoidingView
+        behavior={'position'}
+        contentContainerStyle={styles.container}
+        keyboardVerticalOffset={64}
+        style={styles.container}
+      >
+
       <View style={styles.container}>
         <FlatList
-          data={groups.messages.slice().reverse()}
+          ref={(ref) => {this.flatList = ref; }} 
+	  data={groups.messages.slice().reverse()}
           keyExtractor={this.keyExtractor}
           renderItem={this.renderItem}
           ListEmptyComponent={<View />}
-        />
-      </View>
+       <MessageInput send={this.send} />
+      </KeyboardAvoidingView>
     );
   }
 }
 Messages.propTypes = {
-  group: PropTypes.shape({
-    messages: PropTypes.array,
-    users: PropTypes.array,
-  }),
+  createMessage: PropTypes.func,
+  navigation: PropTypes.shape({
+    state: PropTypes.shape({
+      params: PropTypes.shape({
+        groupId: PropTypes.number,
+      }),
+    }),
+  }),),
   loading: PropTypes.bool,
 };
+const createMessageMutation = graphql(CREATE_MESSAGE_MUTATION, {
+  props: ({ mutate }) => ({
+    createMessage: ({ text, userId, groupId }) =>
+      mutate({
+        variables: { text, userId, groupId },
+_typename: 'Mutation',
+          createMessage: {
+            __typename: 'Message',
+            id: -1, // don't know id yet, but it doesn't matter
+            text, // we know what the text will be
+            createdAt: new Date().toISOString(), // the time is now!
+            from: {
+              __typename: 'User',
+              id: 1, // still faking the user
+              username: 'Justyn.Kautzer', // still faking the user
+            },
+            to: {
+              __typename: 'Group',
+              id: groupId,
+            },
+          },
+        },
+	update: (store, { data: { createMessage } }) => {
+          // Read the data from our cache for this query.
+          const groupData = store.readQuery({
+            query: GROUP_QUERY,
+            variables: {
+              groupId,
+            },
+          });
+          // Add our message from the mutation to the end.
+          groupData.group.messages.unshift(createMessage);
+          // Write our data back to the cache.
+          store.writeQuery({
+            query: GROUP_QUERY,
+            variables: {
+              groupId,
+            },
+            data: groupData,
+          });
+        },
+     
+
+
+
+ }),
+  }),
+});
 const groupQuery = graphql(GROUP_QUERY, {
   options: ownProps => ({
     variables: {
@@ -132,6 +211,6 @@ const groupQuery = graphql(GROUP_QUERY, {
   }),
 });
 export default compose(
-  groupQuery,
+  groupQuery,createMessageMutation,
 )(Messages)
 export default Messages;

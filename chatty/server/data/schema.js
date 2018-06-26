@@ -1,11 +1,12 @@
 
 export const Schema = [
-  `type Query {
+  type Query {
     testString: String
   }
   schema {
+    mutation:Mutation
     query: Query
-  }`,
+  },
 ];
 export const Schema = [`
   # declare custom scalars
@@ -34,6 +35,13 @@ export const Schema = [`
     text: String! # message text
     createdAt: Date! # when message was created
   }
+
+type Mutation {
+createMessage{
+text:String!,userId:Int!,groupId:Int!
+): Message 
+}
+
 # query for types
   type Query {
     # Return a user by their email or id

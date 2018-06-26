@@ -34,6 +34,7 @@
     "prop-types": "^15.6.2",
     "randomcolor": "^0.5.3",
     "react-apollo": "^2.1.6",
+    "react-native-vector-icons": "^4.6.0",
     "react-navigation": "^2.5.2",
     "react-redux": "^5.0.7",
     "redux": "^4.0.0",
