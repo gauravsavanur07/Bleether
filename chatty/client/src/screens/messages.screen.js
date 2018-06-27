@@ -18,7 +18,7 @@ import {graphql,compose } from 'react-apollo'
 import GROUP_QUERY from '../graphql/group.query';
 import update from 'immutability-helper';
 import { Buffer } from 'buffer';
-
+import USER_QUERY from '../graphql/user.query';
 
 const styles = StyleSheet.create({
   container: {
@@ -30,7 +30,36 @@ const styles = StyleSheet.create({
 loading: {
     justifyContent: 'center',
   },
+data:groupData
 });
+const userData = store.readQuery({
+            query: USER_QUERY,
+            variables: {
+              id: 1, // faking the user for now
+            },
+          });
+          // check whether the mutation is the latest message and update cache
+          const updatedGroup = _.find(userData.user.groups, { id: groupId });
+          if (!updatedGroup.messages.edges.length ||
+            moment(updatedGroup.messages.edges[0].node.createdAt).isBefore(moment(createMessage.createdAt))) {
+            // update the latest message
+            updatedGroup.messages.edges[0] = {
+              __typename: 'MessageEdge',
+              node: createMessage,
+              cursor: Buffer.from(createMessage.id.toString()).toString('base64'),
+            };
+            // Write our data back to the cache.
+            store.writeQuery({
+              query: USER_QUERY,
+              variables: {
+                id: 1, // faking the user for now
+              },
+              data: userData,
+            });
+          }
+
+
+
 const fakeData = () => _.times(100, i => ({
   // every message will have a different color
   color: randomColor(),
