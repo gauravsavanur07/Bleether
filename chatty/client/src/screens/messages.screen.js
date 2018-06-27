@@ -16,6 +16,9 @@ import randomColor from 'randomcolor';
 import Message from '../components/message.component';
 import {graphql,compose } from 'react-apollo'
 import GROUP_QUERY from '../graphql/group.query';
+import update from 'immutability-helper';
+import { Buffer } from 'buffer';
+
 
 const styles = StyleSheet.create({
   container: {
@@ -59,10 +62,24 @@ constructor(props) {
     }
     this.state = {
       usernameColors,
-    };
+      refreshing:false,   
+ };
     this.renderItem = this.renderItem.bind(this);
     this.send=this.send.bind(this);
- }
+    this.onEndReached = this.onEndReached.bind(this);	 
+})
+}
+ keyExtractor = item => item.node.id.toString();
+  renderItem = ({ item: edge }) => {
+    const message = edge.node;
+    return (
+      <Message
+        color={this.state.usernameColors[message.from.username]}
+        isCurrentUser={message.from.id === 1} // for now until we implement auth
+        message={message}
+      />
+    );
+  }
 
   componentWillReceiveProps(nextProps) {
     const usernameColors = {};
@@ -79,6 +96,22 @@ constructor(props) {
       });
     }
   }
+onEndReached() {
+ if (!this.state.loadingMoreEntries &&
+      this.props.group.messages.pageInfo.hasNextPage) {
+      this.setState({
+        loadingMoreEntries: true,
+      });
+      this.props.loadMoreEntries().then(() => {
+        this.setState({
+          loadingMoreEntries: false,
+        });
+      });
+    }
+  
+
+}
+
 send(text) {
 this.props.createMessage({
       groupId: this.props.navigation.state.params.groupId,
@@ -86,7 +119,7 @@ this.props.createMessage({
       text,
 
 }).then(() => {
-this.flatList.scrollEnd({animated : true });
+this.flatList.scrollToIndex({ index: 0, animated : true });
 });
 }
 
@@ -113,7 +146,7 @@ this.flatList.scrollEnd({animated : true });
   render() {
   const { loading, group } = this.props;
     // render loading placeholder while we fetch messages
-    if (loading && !group) {
+    if (loading || !group) {
       return (
         <View style={[styles.loading, styles.container]}>
           <ActivityIndicator />
@@ -132,10 +165,12 @@ this.flatList.scrollEnd({animated : true });
       <View style={styles.container}>
         <FlatList
           ref={(ref) => {this.flatList = ref; }} 
-	  data={groups.messages.slice().reverse()}
+	  data={groups.messages.edges}
           keyExtractor={this.keyExtractor}
           renderItem={this.renderItem}
           ListEmptyComponent={<View />}
+	  onEndReached={this.onEndReached}
+	/>
        <MessageInput send={this.send} />
       </KeyboardAvoidingView>
     );
@@ -193,23 +228,65 @@ _typename: 'Mutation',
             data: groupData,
           });
         },
-     
+     group: PropTypes.shape({
+    messages: PropTypes.shape({
+      edges: PropTypes.arrayOf(PropTypes.shape({
+        cursor: PropTypes.string,
+        node: PropTypes.object,
 
 
 
- }),
+
+ })),
+pageInfo:PropTypes.shape({
+hasNextPage:PropTypes.bool,
+hasPreviousPage:Proptypes.bool,
   }),
 });
+const ITEMS_PER_PAGE =10;
 const groupQuery = graphql(GROUP_QUERY, {
   options: ownProps => ({
     variables: {
       groupId: ownProps.navigation.state.params.groupId,
     },
   }),
-  props: ({ data: { loading, group } }) => ({
-    loading, group,
-  }),
+ props: ({ data: { fetchMore, loading, group } }) => ({
+    loading,
+    group,
+    loadMoreEntries() {
+      return fetchMore({
+        // query: ... (you can specify a different query.
+        // GROUP_QUERY is used by default)
+        variables: {
+          // load more queries starting from the cursor of the last (oldest) message
+          after: group.messages.edges[group.messages.edges.length - 1].cursor,
+        },
+        updateQuery: (previousResult, { fetchMoreResult }) => {
+          // we will make an extra call to check if no more entries
+          if (!fetchMoreResult) { return previousResult; }
+          // push results (older messages) to end of messages list
+          return update(previousResult, {
+            group: {
+              messages: {
+                edges: { $push: fetchMoreResult.group.messages.edges },
+                pageInfo: { $set: fetchMoreResult.group.messages.pageInfo },
+              },
+            },
+          });
+        },
+      });
+    },
+  
+
+}),
 });
+
+groupData.group.messages.edges.unshift({
+            __typename: 'MessageEdge',
+            node: createMessage,
+            cursor: Buffer.from(createMessage.id.toString()).toString('base64'),
+          });
+
 export default compose(
   groupQuery,createMessageMutation,
 )(Messages)

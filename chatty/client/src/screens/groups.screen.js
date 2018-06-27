@@ -4,14 +4,16 @@ import React, { Component } from 'react';
 import {
   FlatList,
   ActivityIndicator,
- StyleSheet,
+  StyleSheet,
+  Image,
   Text,
   TouchableHighlight,
   View,
 } from 'react-native';
 import {graphql } from 'react-apollo';
 import {USER_QUERY} from '../graphql/user.query';
-
+import moment from 'moment';
+import Icon from 'react-native-vector-icons/FontAwesome';
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'white',
@@ -20,6 +22,31 @@ const styles = StyleSheet.create({
 loading: {
     justifyContent: 'center',
     flex: 1,
+  },
+groupTextContainer: {
+    flex: 1,
+    flexDirection: 'column',
+    paddingLeft: 6,
+  },
+  groupText: {
+    color: '#8c8c8c',
+  },
+  groupImage: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+  },
+  groupTitleContainer: {
+    flexDirection: 'row',
+  },
+  groupLastUpdated: {
+    flex: 0.3,
+    color: '#8c8c8c',
+    fontSize: 11,
+    textAlign: 'right',
+  },
+  groupUsername: {
+    paddingVertical: 4,
   },
 
   groupContainer: {
@@ -52,7 +79,22 @@ constructor(props) {
 
 
  render() {
-    const { loading, user } = this.props;
+    const { id, name, messages } = this.props.group;
+
+// format createdAt with moment
+const formatCreatedAt = createdAt => moment(createdAt).calendar(null, {
+  sameDay: '[Today]',
+  nextDay: '[Tomorrow]',
+  nextWeek: 'dddd',
+  lastDay: '[Yesterday]',
+  lastWeek: 'dddd',
+  sameElse: 'DD/MM/YYYY',
+});    
+
+
+
+
+const { loading, user } = this.props;
     // render loading placeholder while we fetch messages
     if (loading) {
       return (
@@ -69,7 +111,36 @@ constructor(props) {
       onPress={this.goToMessages}
 >
         <View style={styles.groupContainer}>
-          <Text style={styles.groupName}>{`${name}`}</Text>
+ <Image>
+            style={styles.groupImage}
+            source={{
+              uri: 'https://reactjs.org/logo-og.png',
+            }}
+          />
+          <View style={styles.groupTextContainer}>
+            <View style={styles.groupTitleContainer}>
+              <Text style={styles.groupName}>{`${name}`}</Text>
+              <Text style={styles.groupLastUpdated}>
+                {messages.edges.length ?
+                  formatCreatedAt(messages.edges[0].node.createdAt) : ''}
+              </Text>
+            </View>
+            <Text style={styles.groupUsername}>
+              {messages.edges.length ?
+                `${messages.edges[0].node.from.username}:` : ''}
+            </Text>
+            <Text style={styles.groupText} numberOfLines={1}>
+              {messages.edges.length ? messages.edges[0].node.text : ''}
+            </Text>
+          </View>
+          <Icon
+            name="angle-right"
+            size={24}
+            color={'#8c8c8c'}
+          />         
+
+
+ <Text style={styles.groupName}>{`${name}`}</Text>
         </View>
       </TouchableHighlight>
     );
@@ -115,6 +186,15 @@ Groups.propTypes = {
   navigation: PropTypes.shape({
     navigate: PropTypes.func,
   }),
+group: PropTypes.shape({
+    id: PropTypes.number,
+    name: PropTypes.string,
+    messages: PropTypes.shape({
+      edges: PropTypes.arrayOf(PropTypes.shape({
+        cursor: PropTypes.string,
+        node: PropTypes.object,
+      })),
+    }),
   loading: PropTypes.bool,
   user: PropTypes.shape({
     id: PropTypes.number.isRequired,

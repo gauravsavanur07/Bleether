@@ -11,12 +11,22 @@ export const Schema = [
 export const Schema = [`
   # declare custom scalars
   scalar Date
-  # a group chat entity
+type MessageConnection {
+edges: [MessafeEdge] 
+pageInfo: PageInfo!
+}
+type PageInfo {
+hasNextPage: Boolean!
+hasPreviousPage: Boolean!
+}
+
+
+ # a group chat entity
   type Group {
     id: Int! # unique id for the group
     name: String # name of the group
     users: [User]! # users in the group
-    messages: [Message] # messages sent to the group
+    messages(first: Int after: String, last: Int, before: String ) :# messages sent to the group
   }
   # a user -- keep type really simple for now
   type User {
