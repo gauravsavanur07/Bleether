@@ -96,7 +96,7 @@ const formatCreatedAt = createdAt => moment(createdAt).calendar(null, {
 
 const { loading, user } = this.props;
     // render loading placeholder while we fetch messages
-    if (loading) {
+    if (loading || !user) {
       return (
         <View style={[styles.loading, styles.container]}>
           <ActivityIndicator />

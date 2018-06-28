@@ -1,5 +1,12 @@
 import GraphQLDate from 'graphql-date';
 import { Group, Message, User } from './connectors';
+import { pubsub } from '../subscriptions';
+import { withFilter } from 'graphql-subscriptions';
+import { map } from 'lodash';
+
+const MESSAGE_ADDED_TOPIC = 'messageAdded';
+const GROUP_ADDED_TOPIC = 'groupAdded';
+
 export const Resolvers = {
   Date: GraphQLDate,
  PageInfo: {
@@ -32,9 +39,29 @@ Query: {
         userId,
         text,
         groupId,
-      });
+      }).then((message) => {
+        // publish subscription notification with the whole message
+        pubsub.publish(MESSAGE_ADDED_TOPIC, { [MESSAGE_ADDED_TOPIC]: message });
+        return message;
+
     },
-  },
+ groupAdded: {
+subscribe: withFilter(
+        () => pubsub.asyncIterator(GROUP_ADDED_TOPIC),
+        (payload, args) => {
+          return Boolean(
+            args.userId &&
+            ~map(payload.groupAdded.users, 'id').indexOf(args.userId) &&
+            args.userId !== payload.groupAdded.users[0].id, // don't send to user creating group
+          );
+        },
+      ),
+   
+
+
+ },  
+
+},
   Group: {
     users(group) {
       return group.getUsers();

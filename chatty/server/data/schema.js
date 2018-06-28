@@ -1,4 +1,7 @@
 
+import { addMockFunctionsToSchema, makeExecutableSchema } from 'graphql-tools';
+import { Mocks } from './mocks';
+import { Resolvers } from './resolvers';
 export const Schema = [
   type Query {
     testString: String
@@ -8,7 +11,7 @@ export const Schema = [
     query: Query
   },
 ];
-export const Schema = [`
+export const Schema = [
   # declare custom scalars
   scalar Date
 type MessageConnection {
@@ -62,8 +65,27 @@ text:String!,userId:Int!,groupId:Int!
     # Return a group by its id
     group(id: Int!): Group
   }
+ # Subscription fires on every message added
+    # for any of the groups with one of these groupIds
+    messageAdded(userId: Int, groupIds: [Int]): Message
+    groupAdded(userId: Int): Group
+  }
+  
   schema {
     query: Query
   }
 `];
+
+
+export const executableSchema = makeExecutableSchema({
+  typeDefs: Schema,
+  resolvers: Resolvers,
+});
+// addMockFunctionsToSchema({
+//   schema: executableSchema,
+//   mocks: Mocks,
+//   preserveResolvers: true,
+// });
+export default executableSchema;
+
 export default Schema;

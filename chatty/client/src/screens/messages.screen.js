@@ -7,6 +7,9 @@ import {
   KeyboardAvoidingView,
   View,
 } from 'react-native';
+
+import { wsClient } from '../app';
+import MESSAGE_ADDED_SUBSCRIPTION from '../graphql/message-added.subscription';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import MessageInput from '../components/message-input.component';
@@ -38,6 +41,12 @@ const userData = store.readQuery({
               id: 1, // faking the user for now
             },
           });
+
+
+
+
+
+
           // check whether the mutation is the latest message and update cache
           const updatedGroup = _.find(userData.user.groups, { id: groupId });
           if (!updatedGroup.messages.edges.length ||
@@ -120,10 +129,62 @@ constructor(props) {
           usernameColors[user.username] = this.state.usernameColors[user.username] || randomColor();
         });
       }
+
+// we don't resubscribe on changed props
+      // because it never happens in our app
+      if (!this.subscription) {
+        this.subscription = nextProps.subscribeToMore({
+          document: MESSAGE_ADDED_SUBSCRIPTION,
+          variables: {
+            userId: 1, // fake the user for now
+            groupIds: [nextProps.navigation.state.params.groupId],
+          },
+          updateQuery: (previousResult, { subscriptionData }) => {
+            const newMessage = subscriptionData.data.messageAdded;
+            return update(previousResult, {
+              group: {
+                messages: {
+                  edges: {
+                    $unshift: [{
+                      __typename: 'MessageEdge',
+                      node: newMessage,
+                      cursor: Buffer.from(newMessage.id.toString()).toString('base64'),
+                    }],
+                  },
+                },
+              },
+            });
+          },
+        });
+      }
+
+
+
+
+
+
+
+
+
+      if (!this.reconnected) {
+        this.reconnected = wsClient.onReconnected(() => {
+          this.props.refetch(); // check for any data lost during disconnect
+        }, this);
+      }
+
+
+
+
+
+
       this.setState({
         usernameColors,
       });
     }
+
+else if (this.reconnected) {
+      // remove event subscription
+      this.reconnected();
   }
 onEndReached() {
  if (!this.state.loadingMoreEntries &&
@@ -270,7 +331,11 @@ _typename: 'Mutation',
 pageInfo:PropTypes.shape({
 hasNextPage:PropTypes.bool,
 hasPreviousPage:Proptypes.bool,
-  }),
+loading: PropTypes.bool,
+  loadMoreEntries: PropTypes.func,
+  subscribeToMore: PropTypes.func, 
+
+ }),
 });
 const ITEMS_PER_PAGE =10;
 const groupQuery = graphql(GROUP_QUERY, {
@@ -279,9 +344,10 @@ const groupQuery = graphql(GROUP_QUERY, {
       groupId: ownProps.navigation.state.params.groupId,
     },
   }),
- props: ({ data: { fetchMore, loading, group } }) => ({
+ props: ({ data: { fetchMore, loading, group,subscribeToMore } }) => ({
     loading,
     group,
+subscribeToMore,
     loadMoreEntries() {
       return fetchMore({
         // query: ... (you can specify a different query.
