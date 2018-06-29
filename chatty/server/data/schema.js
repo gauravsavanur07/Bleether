@@ -39,6 +39,7 @@ hasPreviousPage: Boolean!
     messages: [Message] # messages sent by user
     groups: [Group] # groups the user belongs to
     friends: [User] # user's friends/contacts
+    jwt:String # json web token for access 
   }
   # a message sent from a user to a group
   type Message {
@@ -50,6 +51,13 @@ hasPreviousPage: Boolean!
   }
 
 type Mutation {
+createGroup(name: String!, userIds: [Int]): Group
+deleteGroup(id: Int!): Group
+leaveGroup(id: Int!): Group # let user leave group
+updateGroup(id: Int!, name: String): Group
+login(email: String!, password: String!): User
+signup(email: String!, password: String!, username: String): User
+
 createMessage{
 text:String!,userId:Int!,groupId:Int!
 ): Message 
@@ -65,9 +73,10 @@ text:String!,userId:Int!,groupId:Int!
     # Return a group by its id
     group(id: Int!): Group
   }
+type Subscription {
  # Subscription fires on every message added
     # for any of the groups with one of these groupIds
-    messageAdded(userId: Int, groupIds: [Int]): Message
+    messageAdded( groupIds: [Int]): Message
     groupAdded(userId: Int): Group
   }
   

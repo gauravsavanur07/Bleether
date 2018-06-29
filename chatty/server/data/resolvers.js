@@ -1,8 +1,14 @@
 import GraphQLDate from 'graphql-date';
 import { Group, Message, User } from './connectors';
+import { groupLogic, userLogic,  messageLogic } from './logic';
 import { pubsub } from '../subscriptions';
 import { withFilter } from 'graphql-subscriptions';
 import { map } from 'lodash';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+
+import { JWT_SECRET } from '../config';
+
 
 const MESSAGE_ADDED_TOPIC = 'messageAdded';
 const GROUP_ADDED_TOPIC = 'groupAdded';
@@ -34,15 +40,17 @@ Query: {
     },
   },
  Mutation: {
-    createMessage(_, { text, userId, groupId }) {
-      return Message.create({
-        userId,
-        text,
-        groupId,
-      }).then((message) => {
-        // publish subscription notification with the whole message
-        pubsub.publish(MESSAGE_ADDED_TOPIC, { [MESSAGE_ADDED_TOPIC]: message });
-        return message;
+    createMessage(_, args. ctx) {
+  createMessage(_, args, ctx) {
+      return messageLogic.createMessage(_, args, ctx)
+        .then((message) => {
+          // Publish subscription notification with message
+          pubsub.publish(MESSAGE_ADDED_TOPIC, { [MESSAGE_ADDED_TOPIC]: message });
+          return message;
+        });
+    },
+    createGroup(_, { name, userIds, userId }) {
+      return User.findOne({ where: { id: userId } })
 
     },
  groupAdded: {
@@ -65,6 +73,48 @@ subscribe: withFilter(
   Group: {
     users(group) {
       return group.getUsers();
+    },
+ login(_, { email, password }, ctx) {
+      // find user by email
+      return User.findOne({ where: { email } }).then((user) => {
+        if (user) {
+          // validate password
+          return bcrypt.compare(password, user.password).then((res) => {
+            if (res) {
+              // create jwt
+              const token = jwt.sign({
+                id: user.id,
+                email: user.email,
+              }, JWT_SECRET);
+              user.jwt = token;
+              ctx.user = Promise.resolve(user);
+              return user;
+            }
+            return Promise.reject('password incorrect');
+          });
+        }
+        return Promise.reject('email not found');
+      });
+    },
+    signup(_, { email, password, username }, ctx) {
+      // find user by email
+      return User.findOne({ where: { email } }).then((existing) => {
+        if (!existing) {
+          // hash password and create user
+          return bcrypt.hash(password, 10).then(hash => User.create({
+            email,
+            password: hash,
+            username: username || email,
+          })).then((user) => {
+            const { id } = user;
+            const token = jwt.sign({ id, email }, JWT_SECRET);
+            user.jwt = token;
+            ctx.user = Promise.resolve(user);
+            return user;
+          });
+        }
+        return Promise.reject('email already exists'); // email already exists
+      });
     },
     messages(group, { first, last, before, after}) {
 messages(group, { first, last, before, after }) {
