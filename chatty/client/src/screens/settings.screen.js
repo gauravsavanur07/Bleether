@@ -12,8 +12,10 @@ import {
 } from 'react-native';
 import { connect } from 'react-redux';
 import { graphql, compose } from 'react-apollo';
+
 import USER_QUERY from '../graphql/user.query';
 import { logout } from '../actions/auth.actions';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -73,25 +75,33 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
 });
+
 class Settings extends Component {
   static navigationOptions = {
     title: 'Settings',
   };
+
   constructor(props) {
     super(props);
+
     this.state = {};
+
     this.logout = this.logout.bind(this);
   }
+
   logout() {
     this.props.dispatch(logout());
   }
+
   // eslint-disable-next-line
   updateUsername(username) {
     // eslint-disable-next-line
     console.log('TODO: update username');
   }
+
   render() {
     const { loading, user } = this.props;
+
     // render loading placeholder while we fetch data
     if (loading || !user) {
       return (
@@ -100,6 +110,7 @@ class Settings extends Component {
         </View>
       );
     }
+
     return (
       <View style={styles.container}>
         <View style={styles.userContainer}>
@@ -131,6 +142,7 @@ class Settings extends Component {
     );
   }
 }
+
 Settings.propTypes = {
   auth: PropTypes.shape({
     loading: PropTypes.bool,
@@ -145,6 +157,7 @@ Settings.propTypes = {
     username: PropTypes.string,
   }),
 };
+
 const userQuery = graphql(USER_QUERY, {
   skip: ownProps => !ownProps.auth || !ownProps.auth.jwt,
   options: ({ auth }) => ({ variables: { id: auth.id }, fetchPolicy: 'cache-only' }),
@@ -152,11 +165,12 @@ const userQuery = graphql(USER_QUERY, {
     loading, user,
   }),
 });
+
 const mapStateToProps = ({ auth }) => ({
   auth,
 });
+
 export default compose(
   connect(mapStateToProps),
   userQuery,
 )(Settings);
-

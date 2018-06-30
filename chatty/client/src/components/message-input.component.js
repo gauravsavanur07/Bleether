@@ -5,7 +5,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
 import Icon from 'react-native-vector-icons/FontAwesome';
+
 const styles = StyleSheet.create({
   container: {
     alignSelf: 'flex-end',
@@ -40,6 +42,7 @@ const styles = StyleSheet.create({
     marginRight: 0, // default is 12
   },
 });
+
 const sendButton = send => (
   <Icon.Button
     backgroundColor={'blue'}
@@ -52,17 +55,20 @@ const sendButton = send => (
     style={styles.sendButton}
   />
 );
+
 class MessageInput extends Component {
   constructor(props) {
     super(props);
     this.state = {};
     this.send = this.send.bind(this);
   }
+
   send() {
     this.props.send(this.state.text);
     this.textInput.clear();
     this.textInput.blur();
   }
+
   render() {
     return (
       <View style={styles.container}>
@@ -81,8 +87,9 @@ class MessageInput extends Component {
     );
   }
 }
+
 MessageInput.propTypes = {
   send: PropTypes.func.isRequired,
 };
-export default MessageInput;
 
+export default MessageInput;

@@ -1,70 +1,53 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { NavigationActions, addNavigationHelpers, StackNavigator, TabNavigator } from 'react-navigation';
-import { graphql, compose } from 'react-apollo';
-import update from 'immutability-helper';
-import { map } from 'lodash';
-import { Buffer } from 'buffer';
-import { wsClient } from './app';
-import Signin from './screens/signin.screen';
-import { REHYDRATE } from 'redux-persist'
-import { USER_QUERY } from './graphql/user.query';
-import MESSAGE_ADDED_SUBSCRIPTION from './graphql/message-added.subscription';
-import GROUP_ADDED_SUBSCRIPTION from './graphql/group-added.subscription';
 import {
   createReduxBoundAddListener,
   createReactNavigationReduxMiddleware,
 } from 'react-navigation-redux-helpers';
-import Groups from './screens/groups.screen';
-import Messages from './screens/messages.screen';
 import { Text, View, StyleSheet } from 'react-native';
 import { connect } from 'react-redux';
+import { graphql, compose } from 'react-apollo';
+import update from 'immutability-helper';
+import { map } from 'lodash';
+import { Buffer } from 'buffer';
+import { REHYDRATE } from 'redux-persist';
+
+import Groups from './screens/groups.screen';
+import Messages from './screens/messages.screen';
+import FinalizeGroup from './screens/finalize-group.screen';
+import GroupDetails from './screens/group-details.screen';
+import NewGroup from './screens/new-group.screen';
+import Signin from './screens/signin.screen';
 import Settings from './screens/settings.screen';
+
+import { USER_QUERY } from './graphql/user.query';
+import MESSAGE_ADDED_SUBSCRIPTION from './graphql/message-added.subscription';
+import GROUP_ADDED_SUBSCRIPTION from './graphql/group-added.subscription';
+
+import { wsClient } from './app';
+
 import { LOGOUT } from './constants/constants';
-
-
-
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'white',
-  },
-  tabText: {
-    color: '#777',
-    fontSize: 10,
-    justifyContent: 'center',
-  },
-  selected: {
-    color: 'blue',
-  },
-});
-const TestScreen = title => () => (
-  <View style={styles.container}>
-    <Text>
-      {title}
-    </Text>
-  </View>
-);
-
-
 
 // tabs in main screen
 const MainScreenNavigator = TabNavigator({
-  Chats: { screen: TestScreen('Chats') },
+  Chats: { screen: Groups },
   Settings: { screen: Settings },
 }, {
   initialRouteName: 'Chats',
 });
+
 const AppNavigator = StackNavigator({
   Main: { screen: MainScreenNavigator },
-  Messages: { screen :Messages },
-  SignIn: { screen :SignIn},
+  Signin: { screen: Signin },
+  Messages: { screen: Messages },
+  GroupDetails: { screen: GroupDetails },
+  NewGroup: { screen: NewGroup },
+  FinalizeGroup: { screen: FinalizeGroup },
 }, {
-mode: 'modal',
+  mode: 'modal',
 });
+
 // reducer initialization code
 const initialState=AppNavigator.router.getStateForAction(NavigationActions.reset({
 	index: 0,
@@ -74,9 +57,11 @@ const initialState=AppNavigator.router.getStateForAction(NavigationActions.reset
 	  }),
 	],
 }));
+
+// reducer code
 export const navigationReducer = (state = initialState, action) => {
-  let  nextState = AppNavigator.router.getStateForAction(action, state);
-switch (action.type) {
+  let nextState = AppNavigator.router.getStateForAction(action, state);
+  switch (action.type) {
     case REHYDRATE:
       // convert persisted data to Immutable and confirm rehydration
       if (!action.payload.auth || !action.payload.auth.jwt) {
@@ -103,44 +88,42 @@ switch (action.type) {
       break;
   }
 
-
-
-
   // Simply return the original `state` if `nextState` is null or undefined.
   return nextState || state;
 };
+
 // Note: createReactNavigationReduxMiddleware must be run before createReduxBoundAddListener
 export const navigationMiddleware = createReactNavigationReduxMiddleware(
   "root",
   state => state.nav,
 );
 const addListener = createReduxBoundAddListener("root");
+
 class AppWithNavigationState extends Component {
- 
-componentWillReceiveProps(nextProps) {
+  componentWillReceiveProps(nextProps) {
     if (!nextProps.user) {
       if (this.groupSubscription) {
         this.groupSubscription();
       }
+
       if (this.messagesSubscription) {
         this.messagesSubscription();
       }
-if (this.reconnected) {
+
+      // clear the event subscription
+      if (this.reconnected) {
         this.reconnected();
       }
     } else if (!this.reconnected) {
       this.reconnected = wsClient.onReconnected(() => {
         this.props.refetch(); // check for any data lost during disconnect
       }, this);
-    
+    }
 
-
-
-
-}
-    if (nextProps.user &&
+    if (nextProps.user && nextProps.user.id === nextProps.auth.id &&
       (!this.props.user || nextProps.user.groups.length !== this.props.user.groups.length)) {
       // unsubscribe from old
+
       if (typeof this.messagesSubscription === 'function') {
         this.messagesSubscription();
       }
@@ -149,19 +132,13 @@ if (this.reconnected) {
         this.messagesSubscription = nextProps.subscribeToMessages();
       }
     }
+
     if (!this.groupSubscription && nextProps.user) {
       this.groupSubscription = nextProps.subscribeToGroups();
     }
   }
 
-
-
-
-
-
-
-
- render() {
+  render() {
     return (
       <AppNavigator navigation={addNavigationHelpers({
         dispatch: this.props.dispatch,
@@ -173,16 +150,14 @@ if (this.reconnected) {
 }
 
 AppWithNavigationState.propTypes = {
- auth: PropTypes.shape({
+  auth: PropTypes.shape({
     id: PropTypes.number,
     jwt: PropTypes.string,
-  }),  
-
-
-dispatch: PropTypes.func.isRequired,
+  }),
+  dispatch: PropTypes.func.isRequired,
   nav: PropTypes.object.isRequired,
+  refetch: PropTypes.func,
   subscribeToGroups: PropTypes.func,
-  refetch:PropTypes.func,
   subscribeToMessages: PropTypes.func,
   user: PropTypes.shape({
     id: PropTypes.number.isRequired,
@@ -195,22 +170,16 @@ dispatch: PropTypes.func.isRequired,
     ),
   }),
 };
+
 const mapStateToProps = ({ auth, nav }) => ({
   auth,
   nav,
 });
 
-
-
-const mapStateToProps = state => ({
-  nav: state.nav,
-});
-
 const userQuery = graphql(USER_QUERY, {
-skip: ownProps => !ownProps.auth || !ownProps.auth.jwt,
-options: ownProps => ({ variables: { id :ownProps.auth.id } } ),   
-options: () => ({ variables: { id: 1 } }), // fake the user for now
-  props: ({ data: { loading,refetch,user, subscribeToMore } }) => ({
+  skip: ownProps => !ownProps.auth || !ownProps.auth.jwt,
+  options: ownProps => ({ variables: { id: ownProps.auth.id } }),
+  props: ({ data: { loading, user, refetch, subscribeToMore } }) => ({
     loading,
     user,
     refetch,
@@ -218,13 +187,14 @@ options: () => ({ variables: { id: 1 } }), // fake the user for now
       return subscribeToMore({
         document: MESSAGE_ADDED_SUBSCRIPTION,
         variables: {
-          userId: 1, // fake the user for now
           groupIds: map(user.groups, 'id'),
         },
         updateQuery: (previousResult, { subscriptionData }) => {
           const previousGroups = previousResult.user.groups;
           const newMessage = subscriptionData.data.messageAdded;
+
           const groupIndex = map(previousGroups, 'id').indexOf(newMessage.to.id);
+
           return update(previousResult, {
             user: {
               groups: {
@@ -251,6 +221,7 @@ options: () => ({ variables: { id: 1 } }), // fake the user for now
         variables: { userId: user.id },
         updateQuery: (previousResult, { subscriptionData }) => {
           const newGroup = subscriptionData.data.groupAdded;
+
           return update(previousResult, {
             user: {
               groups: { $push: [newGroup] },
@@ -261,11 +232,8 @@ options: () => ({ variables: { id: 1 } }), // fake the user for now
     },
   }),
 });
+
 export default compose(
   connect(mapStateToProps),
   userQuery,
 )(AppWithNavigationState);
-
-
-
-export default connect(mapStateToProps)(AppWithNavigationState)

@@ -1,6 +1,7 @@
-
 import gql from 'graphql-tag';
+
 import MESSAGE_FRAGMENT from './message.fragment';
+
 const GROUP_FRAGMENT = gql`
   fragment GroupFragment on Group {
     id
@@ -9,8 +10,8 @@ const GROUP_FRAGMENT = gql`
       id
       username
     }
-    messages(messageConnection: $messageConnection) {      
-edges {
+    messages(messageConnection: $messageConnection) {
+      edges {
         cursor
         node {
           ... MessageFragment
@@ -24,5 +25,5 @@ edges {
   }
   ${MESSAGE_FRAGMENT}
 `;
-export default GROUP_FRAGMENT;
 
+export default GROUP_FRAGMENT;

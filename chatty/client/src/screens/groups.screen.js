@@ -1,31 +1,46 @@
-import { _ } from 'lodash';
-import {graphql, compose} from 'react-apollo';
-import { connect } from 'react-redux'
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import {
   FlatList,
   ActivityIndicator,
-  StyleSheet,
+  Button,
   Image,
+  StyleSheet,
   Text,
   TouchableHighlight,
   View,
 } from 'react-native';
-import {graphql } from 'react-apollo';
-import {USER_QUERY} from '../graphql/user.query';
+import { graphql, compose } from 'react-apollo';
 import moment from 'moment';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import { connect } from 'react-redux';
+
+import { USER_QUERY } from '../graphql/user.query';
+
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'white',
     flex: 1,
   },
-loading: {
+  loading: {
     justifyContent: 'center',
     flex: 1,
   },
-groupTextContainer: {
+  groupContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderBottomColor: '#eee',
+    borderBottomWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  groupName: {
+    fontWeight: 'bold',
+    flex: 0.7,
+  },
+  groupTextContainer: {
     flex: 1,
     flexDirection: 'column',
     paddingLeft: 6,
@@ -50,38 +65,17 @@ groupTextContainer: {
   groupUsername: {
     paddingVertical: 4,
   },
-
-  groupContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderBottomColor: '#eee',
+  header: {
+    alignItems: 'flex-end',
+    padding: 6,
+    borderColor: '#eee',
     borderBottomWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
   },
-  groupName: {
-    fontWeight: 'bold',
-    flex: 0.7,
+  warning: {
+    textAlign: 'center',
+    padding: 12,
   },
 });
-// create fake data to populate our ListView
-const fakeData = () => _.times(100, i => ({
-  id: i,
-  name: `Group ${i}`,
-}));
-class Group extends Component {
-constructor(props) {
-    super(props);
-    this.goToMessages = this.props.goToMessages.bind(this, this.props.group);
-  }
- 
-
-
-
- render() {
-    const { id, name, messages } = this.props.group;
 
 // format createdAt with moment
 const formatCreatedAt = createdAt => moment(createdAt).calendar(null, {
@@ -91,29 +85,33 @@ const formatCreatedAt = createdAt => moment(createdAt).calendar(null, {
   lastDay: '[Yesterday]',
   lastWeek: 'dddd',
   sameElse: 'DD/MM/YYYY',
-});    
+});
 
+const Header = ({ onPress }) => (
+  <View style={styles.header}>
+    <Button title={'New Group'} onPress={onPress} />
+  </View>
+);
+Header.propTypes = {
+  onPress: PropTypes.func.isRequired,
+};
 
+class Group extends Component {
+  constructor(props) {
+    super(props);
 
+    this.goToMessages = this.props.goToMessages.bind(this, this.props.group);
+  }
 
-const { loading, user } = this.props;
-    // render loading placeholder while we fetch messages
-    if (loading || !user) {
-      return (
-        <View style={[styles.loading, styles.container]}>
-          <ActivityIndicator />
-        </View>
-      );
-    }
-
-    const { id, name } = this.props.group;
+  render() {
+    const { id, name, messages } = this.props.group;
     return (
       <TouchableHighlight
         key={id}
-      onPress={this.goToMessages}
->
+        onPress={this.goToMessages}
+      >
         <View style={styles.groupContainer}>
- <Image>
+          <Image
             style={styles.groupImage}
             source={{
               uri: 'https://reactjs.org/logo-og.png',
@@ -139,51 +137,79 @@ const { loading, user } = this.props;
             name="angle-right"
             size={24}
             color={'#8c8c8c'}
-          />         
-let IS_SIGNED_IN = false;
-
-  componentDidMount() {
-    if (!IS_SIGNED_IN) {
-      IS_SIGNED_IN = true;
-      const { navigate } = this.props.navigation;
-      navigate('Signin');
-    }
-  }
-onRefresh() {
-    this.props.refetch();
-    // faking unauthorized status
-  }
-
- <Text style={styles.groupName}>{`${name}`}</Text>
+          />
         </View>
       </TouchableHighlight>
     );
   }
 }
+
 Group.propTypes = {
   goToMessages: PropTypes.func.isRequired,
   group: PropTypes.shape({
     id: PropTypes.number,
     name: PropTypes.string,
+    messages: PropTypes.shape({
+      edges: PropTypes.arrayOf(PropTypes.shape({
+        cursor: PropTypes.string,
+        node: PropTypes.object,
+      })),
+    }),
   }),
 };
- constructor(props) {
-    super(props);
-    this.goToMessages = this.goToMessages.bind(this);
-  }
+
 class Groups extends Component {
   static navigationOptions = {
     title: 'Chats',
   };
+
+  constructor(props) {
+    super(props);
+    this.goToMessages = this.goToMessages.bind(this);
+    this.goToNewGroup = this.goToNewGroup.bind(this);
+    this.onRefresh = this.onRefresh.bind(this);
+  }
+
+  onRefresh() {
+    this.props.refetch();
+    // faking unauthorized status
+  }
+
   keyExtractor = item => item.id.toString();
+
   goToMessages(group) {
     const { navigate } = this.props.navigation;
     navigate('Messages', { groupId: group.id, title: group.name });
   }
+
+  goToNewGroup() {
+    const { navigate } = this.props.navigation;
+    navigate('NewGroup');
+  }
+
   renderItem = ({ item }) => <Group group={item} goToMessages={this.goToMessages} />;
 
-  renderItem = ({ item }) => <Group group={item} />;
   render() {
+    const { loading, user, networkStatus } = this.props;
+
+    // render loading placeholder while we fetch messages
+    if (loading || !user) {
+      return (
+        <View style={[styles.loading, styles.container]}>
+          <ActivityIndicator />
+        </View>
+      );
+    }
+
+    if (user && !user.groups.length) {
+      return (
+        <View style={styles.container}>
+          <Header onPress={this.goToNewGroup} />
+          <Text style={styles.warning}>{'You do not have any groups.'}</Text>
+        </View>
+      );
+    }
+
     // render list of groups for user
     return (
       <View style={styles.container}>
@@ -191,6 +217,9 @@ class Groups extends Component {
           data={user.groups}
           keyExtractor={this.keyExtractor}
           renderItem={this.renderItem}
+          ListHeaderComponent={() => <Header onPress={this.goToNewGroup} />}
+          onRefresh={this.onRefresh}
+          refreshing={networkStatus === 4}
         />
       </View>
     );
@@ -200,16 +229,9 @@ Groups.propTypes = {
   navigation: PropTypes.shape({
     navigate: PropTypes.func,
   }),
-group: PropTypes.shape({
-    id: PropTypes.number,
-    name: PropTypes.string,
-    messages: PropTypes.shape({
-      edges: PropTypes.arrayOf(PropTypes.shape({
-        cursor: PropTypes.string,
-        node: PropTypes.object,
-      })),
-    }),
   loading: PropTypes.bool,
+  networkStatus: PropTypes.number,
+  refetch: PropTypes.func,
   user: PropTypes.shape({
     id: PropTypes.number.isRequired,
     email: PropTypes.string.isRequired,
@@ -221,29 +243,20 @@ group: PropTypes.shape({
     ),
   }),
 };
-const userQuery = graphql(USER_QUERY, {
-skip: ownProps => !ownProps.auth || !ownProps.auth.jwt,
-  options: ownProps => ({ variables: { id: ownProps.auth.id } }),
-  
 
-props: ({ data: { loading, user } }) => ({
-    loading, user,
+const userQuery = graphql(USER_QUERY, {
+  skip: ownProps => !ownProps.auth || !ownProps.auth.jwt,
+  options: ownProps => ({ variables: { id: ownProps.auth.id } }),
+  props: ({ data: { loading, networkStatus, refetch, user } }) => ({
+    loading, networkStatus, refetch, user,
   }),
 });
-export default userQuery(Groups);
+
 const mapStateToProps = ({ auth }) => ({
   auth,
 });
+
 export default compose(
   connect(mapStateToProps),
   userQuery,
 )(Groups);
-
-
-
-
-
-
-};
-
-export default Groups;
