@@ -45,8 +45,10 @@ const userData = store.readQuery({
 store.writeQuery({
               query: USER_QUERY,
               variables: {
-                id: ownProps.auth.id,
-              },
+            groupId: message.groupId,
+              messageConnection: { first: ITEMS_PER_PAGE },  
+
+            },
               data: userData,
             });
 
@@ -55,7 +57,7 @@ store.writeQuery({
 
 
           // check whether the mutation is the latest message and update cache
-          const updatedGroup = _.find(userData.user.groups, { id: groupId });
+          const updatedGroup = _.find(userData.user.groups, { id: messge.groupId });
           if (!updatedGroup.messages.edges.length ||
             moment(updatedGroup.messages.edges[0].node.createdAt).isBefore(moment(createMessage.createdAt))) {
             // update the latest message
@@ -297,18 +299,19 @@ Messages.propTypes = {
 };
 const createMessageMutation = graphql(CREATE_MESSAGE_MUTATION, {
   props: ({ mutate,ownProps }) => ({
-    createMessage: ({ text, userId, groupId }) =>
-      mutate({
-        variables: { text, userId, groupId },
+    createMessage: message =>      
+mutate({
+        variables: { message },
 _typename: 'Mutation',
           createMessage: {{ text, groupId}) =>
 	 mutate({
          variables: { text, groupId },
 
             __typename: 'Message',
-            id: -1, // don't know id yet, but it doesn't matter
-            text, // we know what the text will be
-            createdAt: new Date().toISOString(), // the time is now!
+            id: -1, // don't know id yet, but it doesn't matt
+            text: message.text, // we know what the text will be
+ 
+	    createdAt: new Date().toISOString(), // the time is now!
             from: {
               __typename: 'User',
               id: ownProps.auth.id, // still faking the user
@@ -363,7 +366,10 @@ const groupQuery = graphql(GROUP_QUERY, {
   options: ownProps => ({
     variables: {
       groupId: ownProps.navigation.state.params.groupId,
-    },
+ messageConnection: {
+        first: ITEMS_PER_PAGE,
+      },    
+},
   }),
  props: ({ data: { fetchMore, loading, group,subscribeToMore } }) => ({
     loading,
@@ -376,7 +382,13 @@ subscribeToMore,
         variables: {
           // load more queries starting from the cursor of the last (oldest) message
           after: group.messages.edges[group.messages.edges.length - 1].cursor,
-        },
+     messageConnection: {
+            first: ITEMS_PER_PAGE,
+            after: group.messages.edges[group.messages.edges.length - 1].cursor,
+          },
+        
+
+},
         updateQuery: (previousResult, { fetchMoreResult }) => {
           // we will make an extra call to check if no more entries
           if (!fetchMoreResult) { return previousResult; }

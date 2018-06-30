@@ -16,6 +16,8 @@ export const messageLogic = {
   to(message) {
     return message.getGroup({ attributes: ['id', 'name'] });
   },
+ createMessage(_, createMessageInput, ctx) {
+    const { text, groupId } = createMessageInput.message;
 
   createMessage(_, { text, groupId }, ctx) {
     return getAuthenticatedUser(ctx)
@@ -36,7 +38,10 @@ export const messageLogic = {
 export const groupLogic = {
   users(group) {
     return group.getUsers({ attributes: ['id', 'username'] });
-  }
+  },
+  messages(group, { messageConnection = {} }) {
+    const { first, last, before, after } = messageConnection;
+
  messages(group, { first, last, before, after }) {
     // base query -- get messages from the right group
     const where = { groupId: group.id };
@@ -98,8 +103,10 @@ return {
       }],
     }));
   },
-  createGroup(_, { name, userIds }, ctx) {
-    return getAuthenticatedUser(ctx)
+createGroup(_, createGroupInput, ctx) {
+    const { name, userIds } = createGroupInput.group;
+    
+return getAuthenticatedUser(ctx)
       .then(user => user.getFriends({ where: { id: { $in: userIds } } })
     
 
@@ -145,12 +152,13 @@ return group.removeUser(user.id)
           });
     
 
+});
+  },
+  updateGroup(_, updateGroupInput, ctx) {
+   const { id, name } = updateGroupInput.group;
+   return getAuthenticatedUser(ctx).then((user) => {  // eslint-disable-line arrow-body-style
 
-
-
-
-
-  return Group.findOne({
+   return Group.findOne({
         where: { id },
         include: [{
           model: User,

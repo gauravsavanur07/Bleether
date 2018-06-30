@@ -138,5 +138,24 @@ Signin.propTypes = {
     goBack: PropTypes.func,
   }),
 };
+const login = graphql(LOGIN_MUTATION, {
+  props: ({ mutate }) => ({
+    login: user =>
+      mutate({
+        variables: { user },
+      }),
+  }),
+});
+const signup = graphql(SIGNUP_MUTATION, {
+  props: ({ mutate }) => ({
+    signup: user =>
+      mutate({
+        variables: { user },
+      }),
+  }),
+});
+
+
+
 export default Signin;
 

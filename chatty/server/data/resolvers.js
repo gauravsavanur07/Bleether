@@ -75,7 +75,11 @@ subscribe: withFilter(
       return group.getUsers();
     },
  login(_, { email, password }, ctx) {
-      // find user by email
+ signup(_, signinUserInput, ctx) {
+  const { email, password, username } = signinUserInput.user;
+     
+
+ // find user by email
       return User.findOne({ where: { email } }).then((user) => {
         if (user) {
           // validate password

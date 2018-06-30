@@ -1,9 +1,12 @@
 import gql from 'graphql-tag';
+
+import GROUP_FRAGMENT from './group.fragment';
+
 import MESSAGE_FRAGMENT from './message.fragment';
 const CREATE_GROUP_MUTATION = gql`
-  mutation createGroup($name: String!, $userIds: [Int!]) {
-    createGroup(name: $name, userIds: $userIds) {
-...
+  mutation createGroup($group: CreateGroupInput!, $messageConnection: ConnectionInput = { first: 1 }) {
+    createGroup(group: $group) {
+      ... GroupFragment.
       users {
         id
       }
@@ -14,7 +17,9 @@ const CREATE_GROUP_MUTATION = gql`
             ... MessageFragment
           }
         }
-      }
+$(GROUP_FRAGMENT)    
+  }
+
     }
   }
   ${MESSAGE_FRAGMENT}
