@@ -1,4 +1,6 @@
 import { _ } from 'lodash';
+import {graphql, compose} from 'react-apollo';
+import { connect } from 'react-redux'
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import {
@@ -138,7 +140,19 @@ const { loading, user } = this.props;
             size={24}
             color={'#8c8c8c'}
           />         
+let IS_SIGNED_IN = false;
 
+  componentDidMount() {
+    if (!IS_SIGNED_IN) {
+      IS_SIGNED_IN = true;
+      const { navigate } = this.props.navigation;
+      navigate('Signin');
+    }
+  }
+onRefresh() {
+    this.props.refetch();
+    // faking unauthorized status
+  }
 
  <Text style={styles.groupName}>{`${name}`}</Text>
         </View>
@@ -208,12 +222,22 @@ group: PropTypes.shape({
   }),
 };
 const userQuery = graphql(USER_QUERY, {
-  options: () => ({ variables: { id: 1 } }), // fake the user for now
-  props: ({ data: { loading, user } }) => ({
+skip: ownProps => !ownProps.auth || !ownProps.auth.jwt,
+  options: ownProps => ({ variables: { id: ownProps.auth.id } }),
+  
+
+props: ({ data: { loading, user } }) => ({
     loading, user,
   }),
 });
 export default userQuery(Groups);
+const mapStateToProps = ({ auth }) => ({
+  auth,
+});
+export default compose(
+  connect(mapStateToProps),
+  userQuery,
+)(Groups);
 
 
 

@@ -7,7 +7,7 @@ import {
   KeyboardAvoidingView,
   View,
 } from 'react-native';
-
+import { connect } from 'react-redux';
 import { wsClient } from '../app';
 import MESSAGE_ADDED_SUBSCRIPTION from '../graphql/message-added.subscription';
 import PropTypes from 'prop-types';
@@ -38,10 +38,17 @@ data:groupData
 const userData = store.readQuery({
             query: USER_QUERY,
             variables: {
-              id: 1, // faking the user for now
+              id: ownProps.auth.id, // faking the user for now
             },
           });
 
+store.writeQuery({
+              query: USER_QUERY,
+              variables: {
+                id: ownProps.auth.id,
+              },
+              data: userData,
+            });
 
 
 
@@ -113,6 +120,8 @@ constructor(props) {
     return (
       <Message
         color={this.state.usernameColors[message.from.username]}
+	isCurrentUser={message.from.id === this.props.auth.id}
+
         isCurrentUser={message.from.id === 1} // for now until we implement auth
         message={message}
       />
@@ -129,6 +138,9 @@ constructor(props) {
           usernameColors[user.username] = this.state.usernameColors[user.username] || randomColor();
         });
       }
+	const mapStateToProps = ({ auth }) => ({
+ 	 auth,
+	});
 
 // we don't resubscribe on changed props
       // because it never happens in our app
@@ -267,7 +279,13 @@ this.flatList.scrollToIndex({ index: 0, animated : true });
   }
 }
 Messages.propTypes = {
-  createMessage: PropTypes.func,
+ auth: PropTypes.shape({
+    id: PropTypes.number,
+    username: PropTypes.string,
+  }), 
+
+
+ createMessage: PropTypes.func,
   navigation: PropTypes.shape({
     state: PropTypes.shape({
       params: PropTypes.shape({
@@ -278,20 +296,23 @@ Messages.propTypes = {
   loading: PropTypes.bool,
 };
 const createMessageMutation = graphql(CREATE_MESSAGE_MUTATION, {
-  props: ({ mutate }) => ({
+  props: ({ mutate,ownProps }) => ({
     createMessage: ({ text, userId, groupId }) =>
       mutate({
         variables: { text, userId, groupId },
 _typename: 'Mutation',
-          createMessage: {
+          createMessage: {{ text, groupId}) =>
+	 mutate({
+         variables: { text, groupId },
+
             __typename: 'Message',
             id: -1, // don't know id yet, but it doesn't matter
             text, // we know what the text will be
             createdAt: new Date().toISOString(), // the time is now!
             from: {
               __typename: 'User',
-              id: 1, // still faking the user
-              username: 'Justyn.Kautzer', // still faking the user
+              id: ownProps.auth.id, // still faking the user
+              username: ownProps.auth.username, // still faking the user
             },
             to: {
               __typename: 'Group',
@@ -383,6 +404,7 @@ groupData.group.messages.edges.unshift({
           });
 
 export default compose(
+  connect(mapStateToProps),
   groupQuery,createMessageMutation,
 )(Messages)
 export default Messages;

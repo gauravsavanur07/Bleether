@@ -85,6 +85,7 @@ subscribe: withFilter(
               const token = jwt.sign({
                 id: user.id,
                 email: user.email,
+		version:user.version,
               }, JWT_SECRET);
               user.jwt = token;
               ctx.user = Promise.resolve(user);
@@ -105,9 +106,10 @@ subscribe: withFilter(
             email,
             password: hash,
             username: username || email,
-          })).then((user) => {
+	    version:1,         
+ })).then((user) => {
             const { id } = user;
-            const token = jwt.sign({ id, email }, JWT_SECRET);
+            const token = jwt.sign({ id, email,version:1 }, JWT_SECRET);
             user.jwt = token;
             ctx.user = Promise.resolve(user);
             return user;

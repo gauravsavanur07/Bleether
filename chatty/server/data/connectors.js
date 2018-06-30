@@ -23,6 +23,7 @@ const UserModel = db.define('user', {
   email: { type: Sequelize.STRING },
   username: { type: Sequelize.STRING },
   password: { type: Sequelize.STRING },
+  version:  {type: Sequelize:INTEGER},
 });
 // users belong to multiple groups
 UserModel.belongsToMany(GroupModel, { through: 'GroupUser' });
@@ -47,7 +48,8 @@ db.sync({ force: true }).then(() => _.times(GROUPS, () => GroupModel.create({
  return bcrypt.hash(password, 10) then(hash =>group.createUser({  
     email: faker.internet.email(),
     username: faker.internet.userName(),
-    password,
+    password:hash,
+    version:1,
   }).then((user) => {
     console.log(
       '{email, username, password}',

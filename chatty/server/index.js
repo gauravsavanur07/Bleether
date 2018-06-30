@@ -1,4 +1,7 @@
 import { Resolvers } from './data/resolvers';
+import jsonwebtoken from 'jsonwebtoken';
+import { getSubscriptionDetails } from './subscriptions'; // make sure this imports before executableSchema!
+import { subscriptionLogic } from './data/logic';
 import jwt from 'express-jwt';
 import { JWT_SECRET } from './config';
 import { User } from './data/connectors';
@@ -54,14 +57,47 @@ const subscriptionServer = SubscriptionServer.create({
  schema: executableSchema,
   context: {
     user: req.user ?
-      User.findOne({ where: { id: req.user.id } }) : Promise.resolve(null),
-  },
+User.findOne({ where: { id: req.user.id, version: req.user.version } }) :
+      Promise.resolve(null),
+ 
+ },
 })));
 
 
 
   execute,
   subscribe,
+onConnect(connectionParams, webSocket) {
+    const userPromise = new Promise((res, rej) => {
+      if (connectionParams.jwt) {
+        jsonwebtoken.verify(connectionParams.jwt, JWT_SECRET,
+        (err, decoded) => {
+          if (err) {
+            rej('Invalid Token');
+          }
+          res(User.findOne({ where: { id: decoded.id, version: decoded.version } }));
+        });
+      } else {
+        rej('No Token');
+      }
+    });
+    return userPromise.then((user) => {
+      if (user) {
+        return { user: Promise.resolve(user) };
+      }
+      return Promise.reject('No User');
+    });
+  },
+  onOperation(parsedMessage, baseParams) {
+    // we need to implement this!!!
+    const { subscriptionName, args } = getSubscriptionDetails({
+      baseParams,
+      schema: executableSchema,
+    });
+    // we need to implement this too!!!
+    return subscriptionLogic[subscriptionName](baseParams, args, baseParams.context);
+  },
+
 }, {
   server: graphQLServer,
   path: SUBSCRIPTIONS_PATH,

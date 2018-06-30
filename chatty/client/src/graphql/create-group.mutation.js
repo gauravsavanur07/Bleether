@@ -1,8 +1,8 @@
 import gql from 'graphql-tag';
 import MESSAGE_FRAGMENT from './message.fragment';
 const CREATE_GROUP_MUTATION = gql`
-  mutation createGroup($name: String!, $userIds: [Int!], $userId: Int!) {
-    createGroup(name: $name, userIds: $userIds, userId: $userId) {
+  mutation createGroup($name: String!, $userIds: [Int!]) {
+    createGroup(name: $name, userIds: $userIds) {
 ...
       users {
         id
@@ -19,5 +19,12 @@ const CREATE_GROUP_MUTATION = gql`
   }
   ${MESSAGE_FRAGMENT}
 `;
+const LEAVE_GROUP_MUTATION = gql`
+  mutation leaveGroup($id: Int!) {
+    leaveGroup(id: $id) {
+      id
+    }
+  }
+
 export default CREATE_GROUP_MUTATION;
 
