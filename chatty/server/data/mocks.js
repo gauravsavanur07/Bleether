@@ -1,4 +1,4 @@
-import faker from 'faker;l
+import faker from 'faker;
 
 export const Mocks = {
 Date: () => new Date(),
